@@ -42,7 +42,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>junit</artifactId>
-            <version>1.32</version>
+            <version>1156.vcf492e95a_a_b_0</version>
         </dependency>
     </dependencies>
 
