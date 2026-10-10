@@ -45,6 +45,7 @@ import hudson.util.StreamTaskListener;
 import io.jenkins.plugins.junit.storage.JunitTestResultStorageConfiguration;
 import io.jenkins.plugins.junit.storage.TestResultImpl;
 import javax.xml.parsers.DocumentBuilderFactory;
+import jenkins.persistence.PersistenceStores;
 import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.DirectoryScanner;
 import org.jenkinsci.plugins.database.Database;
@@ -392,6 +393,27 @@ class DatabaseTestResultStorageTest {
                 assertThat(anInt, is(0));
             }
             assertThat(countSummaryRows("p"), is(0));
+        }
+    }
+
+    @Test
+    void noCleanupWhenApplyingRemoteDeletion() throws Exception {
+        try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(TEST_IMAGE)) {
+            setupPlugin(postgres);
+
+            jenkinsRule.createOnlineSlave(Label.get("remote"));
+            var workflowJob = jenkinsRule.createProject(WorkflowJob.class, "p");
+            workflowJob.setDefinition(new CpsFlowDefinition(BUILD_PIPELINE, true));
+            jenkinsRule.assertBuildStatus(Result.UNSTABLE, workflowJob.scheduleBuild2(0).get());
+            assertThat(countSummaryRows("p"), is(1));
+
+            // another controller sharing the database deleted the job and cleaned up (or will);
+            // replaying its deletion here must not delete rows again, possibly of a recreated job
+            PersistenceStores.applyingRemoteChange(() -> {
+                workflowJob.delete();
+                return null;
+            });
+            assertThat(countSummaryRows("p"), is(1));
         }
     }
 
