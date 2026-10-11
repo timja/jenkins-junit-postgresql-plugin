@@ -397,6 +397,25 @@ class DatabaseTestResultStorageTest {
     }
 
     @Test
+    void testResultsFollowRenames() throws Exception {
+        try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(TEST_IMAGE)) {
+            setupPlugin(postgres);
+
+            jenkinsRule.createOnlineSlave(Label.get("remote"));
+            var workflowJob = jenkinsRule.createProject(WorkflowJob.class, "before");
+            workflowJob.setDefinition(new CpsFlowDefinition(BUILD_PIPELINE, true));
+            jenkinsRule.assertBuildStatus(Result.UNSTABLE, workflowJob.scheduleBuild2(0).get());
+            assertThat(countSummaryRows("before"), is(1));
+
+            workflowJob.renameTo("after");
+            assertThat(countSummaryRows("before"), is(0));
+            assertThat(countSummaryRows("after"), is(1));
+            var action = workflowJob.getBuildByNumber(1).getAction(hudson.tasks.junit.TestResultAction.class);
+            assertThat("the renamed job's build still shows its tests", action.getTotalCount(), is(4));
+        }
+    }
+
+    @Test
     void noCleanupWhenApplyingRemoteDeletion() throws Exception {
         try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(TEST_IMAGE)) {
             setupPlugin(postgres);
