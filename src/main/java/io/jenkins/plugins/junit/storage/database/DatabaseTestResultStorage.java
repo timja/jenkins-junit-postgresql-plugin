@@ -857,6 +857,45 @@ public class DatabaseTestResultStorage extends JunitTestResultStorage {
             });
         }
 
+        /**
+         * Moves this job's results to its new full name, after a rename or a move (also of a folder above it), so that
+         * its history stays with it instead of being left under the old name.
+         */
+        void renameJob(String newName) {
+            withSpan("DatabaseTestResultStorage.TestResultStorage.renameJob", span -> {
+                log.info(String.format("Moving test results of %s to %s", job, newName));
+                invalidateJob(job);
+                try {
+                    return query(connection -> {
+                        boolean originalAutoCommit = connection.getAutoCommit();
+                        connection.setAutoCommit(false);
+                        try {
+                            for (String table : new String[] {"caseResults", "caseResultsSummary"}) {
+                                var sql = "UPDATE " + table + " SET job = ? WHERE job = ?";
+                                addSqlAttribute(span, sql);
+                                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                                    statement.setString(1, StringUtils.truncate(newName, MAX_JOB_LENGTH));
+                                    statement.setString(2, job);
+                                    span.setAttribute("job", job);
+                                    statement.execute();
+                                }
+                            }
+                            connection.commit();
+                        } catch (SQLException | RuntimeException e) {
+                            connection.rollback();
+                            throw e;
+                        } finally {
+                            connection.setAutoCommit(originalAutoCommit);
+                        }
+                        return null;
+                    });
+                } finally {
+                    invalidateJob(job);
+                    invalidateJob(newName);
+                }
+            });
+        }
+
         void deleteJob() {
             withSpan("DatabaseTestResultStorage.TestResultStorage.deleteJob", span -> {
                 log.info(String.format("Deleting test results and purging the cache for job %s", job));

@@ -62,6 +62,25 @@ public class TestResultCleanupListener {
         }
     }
 
+    /** A job renamed or moved keeps its test results (they are keyed by the job's full name). */
+    @Extension
+    public static class JobRenameListener extends ItemListener {
+        @Override
+        public void onLocationChanged(Item item, String oldFullName, String newFullName) {
+            if (!(item instanceof hudson.model.Job) || PersistenceStores.isApplyingRemoteChange()) {
+                return; // not a job; or another controller renamed it and already moved its results
+            }
+            JunitTestResultStorage junitTestResultStorage = JunitTestResultStorage.find();
+            if (!(junitTestResultStorage instanceof DatabaseTestResultStorage)) {
+                return;
+            }
+            TestResultImpl testResult = junitTestResultStorage.load(oldFullName, 0);
+            if (testResult instanceof DatabaseTestResultStorage.TestResultStorage storage) {
+                storage.renameJob(newFullName);
+            }
+        }
+    }
+
     /**
      * Final safeguard: makes sure the cached results for a build are refreshed once it is fully
      * finalized, in case some other invalidation path (e.g. a crashed agent that never returned from
