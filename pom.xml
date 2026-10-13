@@ -16,7 +16,8 @@
         <gitHubRepo>jenkinsci/junit-sql-storage-plugin</gitHubRepo>
         <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
         <jenkins.baseline>2.555</jenkins.baseline>
-        <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+        <!-- cnj Target 3: built against the locally installed core with the jenkins.persistence SPI. Revert before upstreaming. -->
+        <jenkins.version>2.586-SNAPSHOT</jenkins.version>
         <useBeta>true</useBeta>
         <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
     </properties>

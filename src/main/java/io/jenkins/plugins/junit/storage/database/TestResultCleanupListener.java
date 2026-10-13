@@ -8,6 +8,7 @@ import hudson.model.listeners.RunListener;
 import io.jenkins.plugins.junit.storage.FileJunitTestResultStorage;
 import io.jenkins.plugins.junit.storage.JunitTestResultStorage;
 import io.jenkins.plugins.junit.storage.TestResultImpl;
+import jenkins.persistence.PersistenceStores;
 
 public class TestResultCleanupListener {
 
@@ -15,6 +16,9 @@ public class TestResultCleanupListener {
     public static class RunCleanupListener extends RunListener<Run> {
         @Override
         public void onDeleted(Run run) {
+            if (PersistenceStores.isApplyingRemoteChange()) {
+                return; // another controller deleted it and already cleaned up
+            }
             JunitTestResultStorage junitTestResultStorage = JunitTestResultStorage.find();
             if (junitTestResultStorage instanceof FileJunitTestResultStorage) {
                 return;
@@ -37,6 +41,9 @@ public class TestResultCleanupListener {
     public static class JobCleanupListener extends ItemListener {
         @Override
         public void onDeleted(Item item) {
+            if (PersistenceStores.isApplyingRemoteChange()) {
+                return; // another controller deleted it and already cleaned up
+            }
             JunitTestResultStorage junitTestResultStorage = JunitTestResultStorage.find();
             if (junitTestResultStorage instanceof FileJunitTestResultStorage) {
                 return;
